@@ -69,6 +69,8 @@ app.get("/api/exercise/users", (req, res) => {
   UserCreate.find({}).then(data => res.send(data));
 });
 
+// ExerciseSchema
+
 const exerciseSchema = new Schema({
   username: String,
   _id: String,
@@ -89,14 +91,6 @@ app.post("/api/exercise/add", (req, res) => {
 
   UserCreate.findById(userId, (err, data) => {
     if (!data) res.send("unknown _id");
-    // const newExercise = new ExerciseCreate({
-    //   username: data.username,
-    //   description,
-    //   duration,
-    //   date: date ? new Date(date).toDateString() : defaultDate
-    // });
-    // const updateDate =  date: date ? new Date(date).toDateString() : defaultDate
-
     ExerciseCreate.findByIdAndUpdate(
       data.id,
       {
@@ -126,13 +120,42 @@ app.post("/api/exercise/add", (req, res) => {
   });
 });
 
+app.get("/api/exercise/log", (req, res) => {
+  const { userId, from, to, limit } = req.query;
+
+  const desde = new Date(from).getTime();
+  const hasta = new Date(to).getTime();
+
+  if (!userId) {
+    res.send("unknown userId");
+  }
+
+  ExerciseCreate.findById(userId, {
+    log: { $slice: Number(limit) }
+  }).then(result => {
+    const logFilter = result.log.filter(
+      val =>
+        new Date(val.date).getTime() >=
+          (desde || new Date(val.date).getTime()) &&
+        new Date(val.date).getTime() <= (hasta || new Date(val.date).getTime())
+    );
+
+    res.json({
+      _id: result.id,
+      username: result.username,
+      count: logFilter.length,
+      log: logFilter
+    });
+  });
+});
+
 // Not found middleware
 app.use((req, res, next) => {
   return next({ status: 404, message: "not found" });
 });
 
 // Error Handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   let errCode;
   let errMessage;
 
